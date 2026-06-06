@@ -97,11 +97,12 @@ AutoFit 是一套**可重複執行、可量測、可比較**的 Android 實驗�
 | Development plan (7 Sprints) | Done |
 | Sprint 1 — Foundation | Done |
 | Sprint 2 — Health Connect & Environment | Done |
-| Sprint 3+ | Not started |
+| Sprint 3 — Foreground Service core loop | Done |
+| Sprint 4+ | Not started |
 
-Sprint 2 adds **Health Connect** single-write, **environment snapshots**, **permission checks**, **settings navigation**, and `ExperimentController` (create experiment without starting FGS yet).
+Sprint 3 adds **`ExperimentForegroundService`** with per-minute heartbeats, `StepGenerator` integration, scoped wakelock, `START_REDELIVER_INTENT`, and duration watchdog.
 
-Sprint 2 已完成：Health Connect 寫入、環境檢測、權限管理、設定導航、`ExperimentController`（33 unit tests passing）。
+Sprint 3 已完成：FGS 核心迴圈、Heartbeat 寫入 Room、程序恢復骨架（39 unit tests passing）。
 
 ---
 
@@ -317,7 +318,7 @@ AutoFit/
 │       ├── data/env/             # EnvironmentInspector (Sprint 2)
 │       ├── data/repo/            # ExperimentRepository
 │       ├── domain/               # ExperimentController (Sprint 2)
-│       ├── service/              # Sprint 3+
+│       ├── service/              # ExperimentForegroundService, loop runner
 │       └── system/               # PermissionManager, SettingsNavigator
 ├── docs/
 │   ├── SRS.md

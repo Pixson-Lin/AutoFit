@@ -65,6 +65,7 @@ class AutoFitApplication : Application() {
         )
         settingsNavigator = SettingsNavigator(applicationContext)
         experimentController = ExperimentController(
+            appContext = applicationContext,
             repository = experimentRepository,
             environmentInspector = environmentInspector,
         )

@@ -44,6 +44,11 @@
                 <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
             </intent-filter>
         </activity-alias>
+
+        <service
+            android:name=".service.ExperimentForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="health" />
     </application>
 
 </manifest>

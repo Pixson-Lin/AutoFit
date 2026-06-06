@@ -57,7 +57,11 @@ class ExperimentControllerTest {
             context = RuntimeEnvironment.getApplication(),
             permissionManager = permissionManager,
         )
-        controller = ExperimentController(repository, environmentInspector)
+        controller = ExperimentController(
+            appContext = RuntimeEnvironment.getApplication(),
+            repository = repository,
+            environmentInspector = environmentInspector,
+        )
     }
 
     @After

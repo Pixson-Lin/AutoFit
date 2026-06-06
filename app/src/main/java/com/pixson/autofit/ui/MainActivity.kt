@@ -33,6 +33,7 @@ import com.pixson.autofit.ui.theme.AutoFitTheme
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.UUID
 
 class MainActivity : ComponentActivity() {
 
@@ -69,6 +70,7 @@ class MainActivity : ComponentActivity() {
                 val scope = rememberCoroutineScope()
                 val scrollState = rememberScrollState()
                 var hcStatusText by remember { mutableStateOf("Checking Health Connect...") }
+                var activeExperimentId by remember { mutableStateOf<UUID?>(null) }
 
                 suspend fun refreshStatus() {
                     hcStatusText = when (val status = app.healthConnectManager.getSdkStatus()) {
@@ -163,12 +165,62 @@ class MainActivity : ComponentActivity() {
                                             durationMinutes = 5,
                                         ),
                                     )
+                                    activeExperimentId = id
                                     statusMessage = "Experiment created: $id"
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text("Create Test Experiment")
+                        }
+
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    val id = app.experimentController.createAndStartExperiment(
+                                        ExperimentConfig(
+                                            targetCadence = 120,
+                                            randomRange = 15,
+                                            durationMinutes = 3,
+                                        ),
+                                    )
+                                    activeExperimentId = id
+                                    statusMessage = "FGS started: $id"
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Create & Start FGS (3 min)")
+                        }
+
+                        Button(
+                            onClick = {
+                                val id = activeExperimentId
+                                if (id == null) {
+                                    statusMessage = "No active experiment id"
+                                } else {
+                                    app.experimentController.startExperiment(id)
+                                    statusMessage = "FGS start requested: $id"
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Start FGS (last experiment)")
+                        }
+
+                        Button(
+                            onClick = {
+                                val id = activeExperimentId
+                                if (id == null) {
+                                    statusMessage = "No active experiment id"
+                                } else {
+                                    app.experimentController.stopExperiment(id)
+                                    statusMessage = "FGS stop requested: $id"
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Stop FGS (last experiment)")
                         }
 
                         Button(
