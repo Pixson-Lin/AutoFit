@@ -14,6 +14,7 @@ navigation = "2.8.4"
 mockk = "1.13.13"
 turbine = "1.2.0"
 robolectric = "4.14.1"
+healthConnect = "1.1.0-alpha11"
 ksp = "2.0.21-1.0.28"
 
 [libraries]
@@ -39,6 +40,7 @@ androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-co
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+androidx-health-connect = { group = "androidx.health.connect", name = "connect-client", version.ref = "healthConnect" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

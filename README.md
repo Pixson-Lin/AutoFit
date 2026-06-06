@@ -96,11 +96,12 @@ AutoFit 是一套**可重複執行、可量測、可比較**的 Android 實驗�
 | System design (SDS) | Done |
 | Development plan (7 Sprints) | Done |
 | Sprint 1 — Foundation | Done |
-| Sprint 2+ | Not started |
+| Sprint 2 — Health Connect & Environment | Done |
+| Sprint 3+ | Not started |
 
-Sprint 1 delivers a **buildable Android project** with Room SSOT, domain layer (`StepGenerator`, `ResultAggregator`), `ExperimentRepository`, and unit tests. Implementation continues per [development plan](docs/dev_plan.md).
+Sprint 2 adds **Health Connect** single-write, **environment snapshots**, **permission checks**, **settings navigation**, and `ExperimentController` (create experiment without starting FGS yet).
 
-Sprint 1 已完成：可編譯專案、Room 資料層、Domain 層與單元測試（18 tests passing）。
+Sprint 2 已完成：Health Connect 寫入、環境檢測、權限管理、設定導航、`ExperimentController`（33 unit tests passing）。
 
 ---
 
@@ -311,10 +312,13 @@ AutoFit/
 │   └── src/main/java/com/pixson/autofit/
 │       ├── ui/                   # MainActivity, Compose theme (Sprint 1)
 │       ├── domain/               # StepGenerator, ResultAggregator (Sprint 1)
-│       ├── data/local/           # Room entities, DAOs, AppDatabase (Sprint 1)
-│       ├── data/repo/            # ExperimentRepository (Sprint 1)
+│       ├── data/local/           # Room entities, DAOs, AppDatabase
+│       ├── data/health/          # HealthConnectManager (Sprint 2)
+│       ├── data/env/             # EnvironmentInspector (Sprint 2)
+│       ├── data/repo/            # ExperimentRepository
+│       ├── domain/               # ExperimentController (Sprint 2)
 │       ├── service/              # Sprint 3+
-│       └── system/               # Sprint 2+
+│       └── system/               # PermissionManager, SettingsNavigator
 ├── docs/
 │   ├── SRS.md
 │   ├── SDS.md
