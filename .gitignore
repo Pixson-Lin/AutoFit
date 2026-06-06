@@ -7,6 +7,7 @@
 .idea/
 *.iml
 .gradle/
+.gradle-user-home/
 build/
 captures/
 .externalNativeBuild/

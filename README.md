@@ -95,11 +95,12 @@ AutoFit 是一套**可重複執行、可量測、可比較**的 Android 實驗�
 | Requirements (SRS) | Done |
 | System design (SDS) | Done |
 | Development plan (7 Sprints) | Done |
-| Android source code | Not started |
+| Sprint 1 — Foundation | Done |
+| Sprint 2+ | Not started |
 
-The repository is in the **design & planning** phase. Implementation follows the [development plan](docs/dev_plan.md) across 7 sprints (~**460–560 hours**, ~24–28 weeks part-time).
+Sprint 1 delivers a **buildable Android project** with Room SSOT, domain layer (`StepGenerator`, `ResultAggregator`), `ExperimentRepository`, and unit tests. Implementation continues per [development plan](docs/dev_plan.md).
 
-目前 repo 處於**設計與規劃階段**，實作將依 [開發計畫](docs/dev_plan.md) 分 7 個 Sprint 進行。
+Sprint 1 已完成：可編譯專案、Room 資料層、Domain 層與單元測試（18 tests passing）。
 
 ---
 
@@ -262,19 +263,23 @@ Standard scenarios from the SRS for cross-device comparison:
 
 ## Getting Started
 
-> Source code is not implemented yet. This section will be updated after Sprint 1.  
-> 原始碼尚未實作，Sprint 1 完成後將更新此區塊。
+### Prerequisites · 前置需求
 
-### Build (draft) · 建置流程（草案）
+- Android Studio with SDK API 31–35
+- JDK 17+ (Android Studio JBR works)
+
+### Build · 建置
 
 ```bash
 git clone https://github.com/Pixson-Lin/AutoFit.git
 cd AutoFit
 
-# Build debug APK
-./gradlew assembleDebug
+# Windows
+gradlew.bat assembleDebug
+gradlew.bat testDebugUnitTest
 
-# Run unit tests
+# macOS / Linux
+./gradlew assembleDebug
 ./gradlew testDebugUnitTest
 
 # Install on emulator or device
@@ -298,21 +303,23 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## Project Structure
 
-Documentation-only for now; expected layout after implementation ([SDS §2.3](docs/SDS.md)):
+Current layout ([SDS §2.3](docs/SDS.md)):
 
 ```text
 AutoFit/
-├── app/                          # Android app module (from Sprint 1)
+├── app/
 │   └── src/main/java/com/pixson/autofit/
-│       ├── ui/                   # Compose screens, ViewModels
-│       ├── domain/               # StepGenerator, ExperimentController
-│       ├── data/                 # Room, Health Connect, Repository
-│       ├── service/              # Foreground Service, Notification
-│       └── system/               # BootReceiver, PermissionManager
+│       ├── ui/                   # MainActivity, Compose theme (Sprint 1)
+│       ├── domain/               # StepGenerator, ResultAggregator (Sprint 1)
+│       ├── data/local/           # Room entities, DAOs, AppDatabase (Sprint 1)
+│       ├── data/repo/            # ExperimentRepository (Sprint 1)
+│       ├── service/              # Sprint 3+
+│       └── system/               # Sprint 2+
 ├── docs/
 │   ├── SRS.md
 │   ├── SDS.md
 │   └── dev_plan.md
+├── gradlew.bat
 ├── LICENSE
 └── README.md
 ```
