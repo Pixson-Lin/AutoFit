@@ -78,7 +78,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private var statusMessage by mutableStateOf("Sprint 3 — Foreground Service core loop")
+    private var statusMessage by mutableStateOf("Sprint 4 — HC batch write, notification, alarm")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

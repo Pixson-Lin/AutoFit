@@ -8,6 +8,7 @@ import com.pixson.autofit.data.health.HealthConnectManager
 import com.pixson.autofit.data.local.AppDatabase
 import com.pixson.autofit.data.repo.ExperimentRepository
 import com.pixson.autofit.domain.ExperimentController
+import com.pixson.autofit.domain.ResultAggregator
 import com.pixson.autofit.system.PermissionManager
 import com.pixson.autofit.system.SettingsNavigator
 
@@ -32,6 +33,9 @@ class AutoFitApplication : Application() {
         private set
 
     lateinit var experimentController: ExperimentController
+        private set
+
+    lateinit var resultAggregator: ResultAggregator
         private set
 
     override fun onCreate() {
@@ -64,6 +68,7 @@ class AutoFitApplication : Application() {
             permissionManager = permissionManager,
         )
         settingsNavigator = SettingsNavigator(applicationContext)
+        resultAggregator = ResultAggregator()
         experimentController = ExperimentController(
             appContext = applicationContext,
             repository = experimentRepository,

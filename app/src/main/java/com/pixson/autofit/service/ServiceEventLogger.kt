@@ -38,4 +38,32 @@ object ServiceEventLogger {
     fun durationReached(experimentId: UUID) {
         Log.i(TAG, "Duration reached experimentId=$experimentId")
     }
+
+    fun healthWriteRecorded(
+        experimentId: UUID,
+        stepCount: Int,
+        success: Boolean,
+        errorMessage: String,
+    ) {
+        Log.i(
+            TAG,
+            "Health write experimentId=$experimentId steps=$stepCount success=$success error=$errorMessage",
+        )
+    }
+
+    fun finalized(experimentId: UUID, status: com.pixson.autofit.domain.model.ExperimentStatus, totalSteps: Int) {
+        Log.i(TAG, "Finalized experimentId=$experimentId status=$status totalSteps=$totalSteps")
+    }
+
+    fun alarmScheduled(experimentId: UUID, exact: Boolean, delayMs: Long) {
+        Log.d(TAG, "Alarm scheduled experimentId=$experimentId exact=$exact delayMs=$delayMs")
+    }
+
+    fun alarmCancelled(experimentId: UUID) {
+        Log.d(TAG, "Alarm cancelled experimentId=$experimentId")
+    }
+
+    fun alarmFired(experimentId: String) {
+        Log.i(TAG, "Alarm fired experimentId=$experimentId")
+    }
 }

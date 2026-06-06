@@ -98,11 +98,12 @@ AutoFit 是一套**可重複執行、可量測、可比較**的 Android 實驗�
 | Sprint 1 — Foundation | Done |
 | Sprint 2 — Health Connect & Environment | Done |
 | Sprint 3 — Foreground Service core loop | Done |
-| Sprint 4+ | Not started |
+| Sprint 4 — HC batch write, notification, alarm | Done |
+| Sprint 5+ | Not started |
 
-Sprint 3 adds **`ExperimentForegroundService`** with per-minute heartbeats, `StepGenerator` integration, scoped wakelock, `START_REDELIVER_INTENT`, and duration watchdog.
+Sprint 4 adds **Health Connect batch writes**, **`HealthWriteEvent`** logging, throttled **`NotificationController`**, **`AlarmScheduler`** Doze backstop, and **`ExperimentFinalizer`** with `ResultAggregator`.
 
-Sprint 3 已完成：FGS 核心迴圈、Heartbeat 寫入 Room、程序恢復骨架（39 unit tests passing）。
+Sprint 4 已完成：完整 backend pipeline（產步數 → HC 寫入 → 通知更新 → 結果彙總，51 unit tests passing）。
 
 ---
 

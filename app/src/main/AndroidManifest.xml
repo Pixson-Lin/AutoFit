@@ -50,6 +50,10 @@
             android:name=".service.ExperimentForegroundService"
             android:exported="false"
             android:foregroundServiceType="health" />
+
+        <receiver
+            android:name=".service.ExperimentAlarmReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

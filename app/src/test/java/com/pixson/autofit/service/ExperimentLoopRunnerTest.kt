@@ -1,11 +1,16 @@
 package com.pixson.autofit.service
 
 import androidx.room.Room
+import com.pixson.autofit.data.health.HealthConnectManager
+import com.pixson.autofit.data.health.HealthSdkStatus
+import com.pixson.autofit.data.health.WriteResult
 import com.pixson.autofit.data.local.AppDatabase
 import com.pixson.autofit.data.local.entity.ExperimentEntity
 import com.pixson.autofit.data.local.entity.HeartbeatEntity
 import com.pixson.autofit.data.repo.ExperimentRepository
 import com.pixson.autofit.domain.model.ExperimentStatus
+import io.mockk.coEvery
+import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -26,6 +31,7 @@ class ExperimentLoopRunnerTest {
     private lateinit var repository: ExperimentRepository
     private lateinit var clock: FakeMonotonicClock
     private lateinit var wakeLock: CountingWakeLockGateway
+    private lateinit var healthWriteCoordinator: HealthWriteCoordinator
 
     @Before
     fun setUp() {
@@ -42,6 +48,18 @@ class ExperimentLoopRunnerTest {
         )
         clock = FakeMonotonicClock()
         wakeLock = CountingWakeLockGateway()
+
+        val healthConnectManager = mockk<HealthConnectManager>()
+        coEvery { healthConnectManager.getSdkStatus() } returns HealthSdkStatus.Available
+        coEvery { healthConnectManager.hasWritePermission() } returns true
+        coEvery { healthConnectManager.writeSteps(any(), any(), any()) } returns WriteResult.Success
+
+        healthWriteCoordinator = HealthWriteCoordinator(
+            healthConnectManager = healthConnectManager,
+            repository = repository,
+            batchTickCount = 1,
+            currentInstant = clock::currentInstant,
+        )
     }
 
     @After
@@ -50,15 +68,17 @@ class ExperimentLoopRunnerTest {
     }
 
     @Test
-    fun `short experiment records heartbeats and completes`() = runBlocking {
+    fun `short experiment records heartbeats and returns completed`() = runBlocking {
         val experimentId = insertRunningExperiment(durationMinutes = 1)
         val runner = createRunner(tickIntervalMs = 50L)
 
-        runner.run(experimentId, isStopped = { false })
+        val exitReason = runner.run(experimentId, isStopped = { false })
 
         val heartbeats = repository.getHeartbeats(experimentId)
         assertTrue(heartbeats.size >= 2)
-        assertEquals(ExperimentStatus.COMPLETED, repository.getExperiment(experimentId)?.status)
+        assertEquals(LoopExitReason.COMPLETED, exitReason)
+        assertEquals(ExperimentStatus.RUNNING, repository.getExperiment(experimentId)?.status)
+        assertTrue(repository.getHealthWriteEvents(experimentId).isNotEmpty())
         assertEquals(heartbeats.size, wakeLock.acquireCount)
         assertEquals(heartbeats.size, wakeLock.releaseCount)
     }
@@ -98,7 +118,7 @@ class ExperimentLoopRunnerTest {
         val runner = createRunner(tickIntervalMs = 10L)
         var ticks = 0
 
-        runner.run(
+        val exitReason = runner.run(
             experimentId = experimentId,
             isStopped = {
                 ticks++
@@ -106,6 +126,7 @@ class ExperimentLoopRunnerTest {
             },
         )
 
+        assertEquals(LoopExitReason.STOPPED_EARLY, exitReason)
         assertEquals(ExperimentStatus.RUNNING, repository.getExperiment(experimentId)?.status)
         assertEquals(2, repository.getHeartbeats(experimentId).size)
     }
@@ -113,6 +134,7 @@ class ExperimentLoopRunnerTest {
     private fun createRunner(tickIntervalMs: Long): ExperimentLoopRunner {
         return ExperimentLoopRunner(
             repository = repository,
+            healthWriteCoordinator = healthWriteCoordinator,
             deviceStateSource = FakeDeviceStateReader(),
             wakeLockGateway = wakeLock,
             tickIntervalMs = tickIntervalMs,

@@ -5,4 +5,5 @@
     <string name="notification_channel_description">Foreground experiment status</string>
     <string name="notification_title_running">AutoFit experiment running</string>
     <string name="notification_status_starting">Starting experiment…</string>
+    <string name="notification_status_running">%1$d steps · %2$d min left · tick %3$d</string>
 </resources>

@@ -10,8 +10,16 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
+data class TickSnapshot(
+    val generatedSteps: Int,
+    val tickIndex: Int,
+    val totalWrittenSteps: Int,
+    val remainingMinutes: Int,
+)
+
 class ExperimentLoopRunner(
     private val repository: ExperimentRepository,
+    private val healthWriteCoordinator: HealthWriteCoordinator,
     private val deviceStateSource: DeviceStateSource,
     private val wakeLockGateway: WakeLockGateway,
     private val tickIntervalMs: Long = ServiceConstants.TICK_INTERVAL_MS,
@@ -23,10 +31,10 @@ class ExperimentLoopRunner(
     suspend fun run(
         experimentId: UUID,
         isStopped: () -> Boolean,
-        onTick: suspend (generatedSteps: Int, tickIndex: Int) -> Unit = { _, _ -> },
-    ) {
-        val experiment = repository.getExperiment(experimentId) ?: return
-        if (experiment.status != ExperimentStatus.RUNNING) return
+        onTick: suspend (TickSnapshot) -> Unit = {},
+    ): LoopExitReason {
+        val experiment = repository.getExperiment(experimentId) ?: return LoopExitReason.NOT_FOUND
+        if (experiment.status != ExperimentStatus.RUNNING) return LoopExitReason.NOT_RUNNING
 
         val priorHeartbeats = repository.getHeartbeats(experimentId).size
         if (priorHeartbeats > 0) {
@@ -42,11 +50,13 @@ class ExperimentLoopRunner(
             val tickIndex = priorHeartbeats + ticksThisSession
 
             wakeLockGateway.acquire()
-            val generatedSteps = try {
+            try {
                 val steps = stepGenerator.generate(
                     targetCadence = experiment.targetCadence,
                     randomRange = experiment.randomRange,
                 )
+                healthWriteCoordinator.recordGeneratedSteps(experimentId, steps)
+
                 val deviceState = deviceStateSource.read()
                 repository.insertHeartbeat(
                     HeartbeatEntity(
@@ -60,8 +70,17 @@ class ExperimentLoopRunner(
                     ),
                 )
                 ServiceEventLogger.heartbeatRecorded(experimentId, steps, tickIndex)
-                onTick(steps, tickIndex)
-                steps
+
+                val totalWrittenSteps = healthWriteCoordinator.totalWrittenSteps(experimentId)
+                val remainingMinutes = remainingMinutes(experimentId)
+                onTick(
+                    TickSnapshot(
+                        generatedSteps = steps,
+                        tickIndex = tickIndex,
+                        totalWrittenSteps = totalWrittenSteps,
+                        remainingMinutes = remainingMinutes,
+                    ),
+                )
             } finally {
                 wakeLockGateway.release()
             }
@@ -75,10 +94,20 @@ class ExperimentLoopRunner(
             }
         }
 
-        if (!isStopped() && !shouldContinue(experimentId)) {
-            ServiceEventLogger.durationReached(experimentId)
-            repository.updateExperimentStatus(experimentId, ExperimentStatus.COMPLETED)
+        return when {
+            isStopped() -> LoopExitReason.STOPPED_EARLY
+            !shouldContinue(experimentId) -> {
+                ServiceEventLogger.durationReached(experimentId)
+                LoopExitReason.COMPLETED
+            }
+            else -> LoopExitReason.STOPPED_EARLY
         }
+    }
+
+    private suspend fun remainingMinutes(experimentId: UUID): Int {
+        val experiment = repository.getExperiment(experimentId) ?: return 0
+        val elapsedMinutes = Duration.between(experiment.startTime, currentInstant()).toMinutes()
+        return (experiment.durationMinutes - elapsedMinutes).toInt().coerceAtLeast(0)
     }
 
     private suspend fun shouldContinue(experimentId: UUID): Boolean {
