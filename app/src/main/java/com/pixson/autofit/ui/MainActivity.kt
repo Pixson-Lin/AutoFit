@@ -1,5 +1,6 @@
 package com.pixson.autofit.ui
 
+import android.Manifest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -37,6 +38,8 @@ import java.util.UUID
 
 class MainActivity : ComponentActivity() {
 
+    private var pendingFgsExperimentId: UUID? = null
+
     private val requestHealthPermissions = registerForActivityResult(
         PermissionController.createRequestPermissionResultContract(),
     ) { granted ->
@@ -57,13 +60,45 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private var statusMessage by mutableStateOf("Sprint 2 — Environment & Health Connect")
+    private val requestActivityRecognition = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        val app = application as AutoFitApplication
+        val pendingId = pendingFgsExperimentId
+        pendingFgsExperimentId = null
+        statusMessage = if (granted) {
+            if (pendingId != null) {
+                app.experimentController.startExperiment(pendingId)
+                "FGS started: $pendingId"
+            } else {
+                "Activity recognition granted (required for health FGS on Android 14+)."
+            }
+        } else {
+            "Activity recognition denied. Health FGS cannot start on Android 14+."
+        }
+    }
+
+    private var statusMessage by mutableStateOf("Sprint 3 — Foreground Service core loop")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         val app = application as AutoFitApplication
+
+        fun requestFgsPrerequisites(experimentId: UUID) {
+            if (!app.permissionManager.canStartHealthForegroundService()) {
+                pendingFgsExperimentId = experimentId
+                requestActivityRecognition.launch(Manifest.permission.ACTIVITY_RECOGNITION)
+                statusMessage = "Requesting Activity Recognition (required for health FGS)..."
+                return
+            }
+            if (!app.permissionManager.isNotificationPermissionGranted()) {
+                requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            app.experimentController.startExperiment(experimentId)
+            statusMessage = "FGS started: $experimentId"
+        }
 
         setContent {
             AutoFitTheme {
@@ -132,6 +167,17 @@ class MainActivity : ComponentActivity() {
 
                         Button(
                             onClick = {
+                                requestActivityRecognition.launch(
+                                    Manifest.permission.ACTIVITY_RECOGNITION,
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Request Activity Recognition (FGS)")
+                        }
+
+                        Button(
+                            onClick = {
                                 scope.launch {
                                     val end = Instant.now().truncatedTo(ChronoUnit.SECONDS)
                                     val start = end.minus(1, ChronoUnit.MINUTES)
@@ -177,7 +223,7 @@ class MainActivity : ComponentActivity() {
                         Button(
                             onClick = {
                                 scope.launch {
-                                    val id = app.experimentController.createAndStartExperiment(
+                                    val id = app.experimentController.createExperiment(
                                         ExperimentConfig(
                                             targetCadence = 120,
                                             randomRange = 15,
@@ -185,7 +231,7 @@ class MainActivity : ComponentActivity() {
                                         ),
                                     )
                                     activeExperimentId = id
-                                    statusMessage = "FGS started: $id"
+                                    requestFgsPrerequisites(id)
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -199,8 +245,7 @@ class MainActivity : ComponentActivity() {
                                 if (id == null) {
                                     statusMessage = "No active experiment id"
                                 } else {
-                                    app.experimentController.startExperiment(id)
-                                    statusMessage = "FGS start requested: $id"
+                                    requestFgsPrerequisites(id)
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),

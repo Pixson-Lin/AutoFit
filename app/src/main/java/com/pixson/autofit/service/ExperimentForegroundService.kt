@@ -60,6 +60,13 @@ class ExperimentForegroundService : Service() {
             return START_NOT_STICKY
         }
 
+        val app = application as AutoFitApplication
+        if (!app.permissionManager.canStartHealthForegroundService()) {
+            ServiceEventLogger.startBlocked(experimentId, "missing_activity_recognition")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         activeExperimentId = experimentId
         stopRequested = false
         ServiceEventLogger.started(experimentId)

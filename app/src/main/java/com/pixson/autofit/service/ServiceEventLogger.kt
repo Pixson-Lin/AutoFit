@@ -11,6 +11,10 @@ object ServiceEventLogger {
         Log.i(TAG, "Service started experimentId=$experimentId")
     }
 
+    fun startBlocked(experimentId: UUID, reason: String) {
+        Log.w(TAG, "Service start blocked experimentId=$experimentId reason=$reason")
+    }
+
     fun stopped(experimentId: UUID?, reason: String) {
         Log.i(TAG, "Service stopped experimentId=$experimentId reason=$reason")
     }

@@ -8,6 +8,7 @@ import com.pixson.autofit.data.repo.ExperimentRepository
 import com.pixson.autofit.domain.model.ExperimentConfig
 import com.pixson.autofit.domain.model.ExperimentStatus
 import com.pixson.autofit.service.ExperimentForegroundService
+import com.pixson.autofit.system.PermissionManager
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
@@ -16,6 +17,7 @@ class ExperimentController(
     private val appContext: Context,
     private val repository: ExperimentRepository,
     private val environmentInspector: EnvironmentInspector,
+    private val permissionManager: PermissionManager,
 ) {
 
     suspend fun createExperiment(config: ExperimentConfig): UUID {
@@ -42,6 +44,9 @@ class ExperimentController(
     }
 
     fun startExperiment(experimentId: UUID) {
+        require(permissionManager.canStartHealthForegroundService()) {
+            "ACTIVITY_RECOGNITION is required for health foreground service on Android 14+"
+        }
         ContextCompat.startForegroundService(
             appContext,
             ExperimentForegroundService.startIntent(appContext, experimentId),

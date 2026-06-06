@@ -51,6 +51,7 @@ class ExperimentControllerTest {
         every { permissionManager.isIgnoringBatteryOptimizations() } returns false
         every { permissionManager.isPowerSaveMode() } returns true
         every { permissionManager.notificationPermissionState() } returns PermissionGrantState.NOT_REQUIRED
+        every { permissionManager.canStartHealthForegroundService() } returns true
         coEvery { permissionManager.healthConnectPermissionState() } returns PermissionGrantState.DENIED
 
         environmentInspector = EnvironmentInspector(
@@ -61,6 +62,7 @@ class ExperimentControllerTest {
             appContext = RuntimeEnvironment.getApplication(),
             repository = repository,
             environmentInspector = environmentInspector,
+            permissionManager = permissionManager,
         )
     }
 

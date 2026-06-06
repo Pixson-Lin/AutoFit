@@ -17,6 +17,34 @@ class PermissionManager(
     private val healthConnectManager: HealthConnectManager,
 ) {
 
+    fun isActivityRecognitionGranted(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACTIVITY_RECOGNITION,
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    fun activityRecognitionPermissionState(): Int {
+        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            PermissionGrantState.NOT_REQUIRED
+        } else if (isActivityRecognitionGranted()) {
+            PermissionGrantState.GRANTED
+        } else {
+            PermissionGrantState.DENIED
+        }
+    }
+
+    /**
+     * Android 14+ validates [health] foreground services against a runtime permission
+     * such as ACTIVITY_RECOGNITION. WRITE_STEPS alone does not satisfy this check.
+     */
+    fun canStartHealthForegroundService(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            return true
+        }
+        return isActivityRecognitionGranted()
+    }
+
     fun isNotificationPermissionGranted(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             return true

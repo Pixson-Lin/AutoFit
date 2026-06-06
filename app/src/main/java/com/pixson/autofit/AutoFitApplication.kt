@@ -68,6 +68,7 @@ class AutoFitApplication : Application() {
             appContext = applicationContext,
             repository = experimentRepository,
             environmentInspector = environmentInspector,
+            permissionManager = permissionManager,
         )
     }
 }

@@ -75,4 +75,15 @@ class PermissionManagerTest {
             state == PermissionGrantState.GRANTED || state == PermissionGrantState.DENIED,
         )
     }
+
+    @Test
+    fun `health foreground service allowed on API 31 without activity recognition`() {
+        assertTrue(permissionManager.canStartHealthForegroundService())
+    }
+
+    @Test
+    @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE])
+    fun `health foreground service blocked on API 34 without activity recognition`() {
+        assertEquals(false, permissionManager.canStartHealthForegroundService())
+    }
 }
