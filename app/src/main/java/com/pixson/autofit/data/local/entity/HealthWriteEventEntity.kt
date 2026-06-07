@@ -14,6 +14,8 @@ data class HealthWriteEventEntity(
     @PrimaryKey val id: UUID,
     val experimentId: UUID,
     val timestamp: Instant,
+    val recordStart: Instant,
+    val recordEnd: Instant,
     val stepCount: Int,
     val success: Boolean,
     val errorMessage: String,

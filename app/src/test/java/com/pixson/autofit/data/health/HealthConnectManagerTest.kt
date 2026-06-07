@@ -91,6 +91,25 @@ class HealthConnectManagerTest {
     }
 
     @Test
+    fun `write fails when end time is not after start time`() = runTest {
+        coEvery { gateway.getSdkStatus() } returns HealthConnectClient.SDK_AVAILABLE
+        coEvery { gateway.getGrantedPermissions() } returns setOf(manager.writeStepsPermission)
+
+        val instant = Instant.parse("2026-06-06T10:00:00Z")
+        val result = manager.writeSteps(
+            stepCount = 120,
+            startTime = instant,
+            endTime = instant,
+        )
+
+        assertTrue(result is WriteResult.Failure)
+        assertEquals(
+            "endTime must be after startTime",
+            (result as WriteResult.Failure).reason,
+        )
+    }
+
+    @Test
     fun `hasWritePermission returns false when sdk unavailable`() = runTest {
         coEvery { gateway.getSdkStatus() } returns HealthConnectClient.SDK_UNAVAILABLE
 

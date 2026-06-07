@@ -97,6 +97,8 @@ class ResultAggregatorTest {
         id = UUID.randomUUID(),
         experimentId = experimentId,
         timestamp = Instant.parse("2026-06-06T10:01:00Z"),
+        recordStart = Instant.parse("2026-06-06T10:00:00Z"),
+        recordEnd = Instant.parse("2026-06-06T10:01:00Z"),
         stepCount = stepCount,
         success = success,
         errorMessage = error,

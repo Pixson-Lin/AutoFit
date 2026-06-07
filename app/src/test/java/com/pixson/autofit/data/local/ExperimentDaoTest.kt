@@ -89,6 +89,7 @@ class ExperimentDaoTest {
         durationMinutes = 60,
         targetCadence = 120,
         randomRange = 15,
+        batchMinutes = 1,
         status = status,
     )
 }

@@ -23,7 +23,7 @@ import com.pixson.autofit.data.local.entity.HeartbeatEntity
         ExperimentResultEntity::class,
         EnvironmentSnapshotEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

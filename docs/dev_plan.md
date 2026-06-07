@@ -143,9 +143,9 @@ Sprint 之間為**嚴格順序依賴**：後續 Sprint 不可跳過前置交付�
   - `com.pixson.autofit.service`
   - `com.pixson.autofit.system`
 - [ ] Room 實體（SRS §6）
-  - `Experiment`（id, startTime, durationMinutes, targetCadence, randomRange, status）
+  - `Experiment`（id, startTime, durationMinutes, targetCadence, randomRange, batchMinutes, status）
   - `Heartbeat`（id, experimentId, timestamp, generatedSteps, batteryLevel, screenOn, charging）
-  - `HealthWriteEvent`（id, experimentId, timestamp, stepCount, success, errorMessage）
+  - `HealthWriteEvent`（id, experimentId, timestamp, recordStart, recordEnd, stepCount, success, errorMessage）
   - `ExperimentResult`（experimentId, totalSteps, heartbeatCount, writeSuccessCount, writeFailureCount, actualDuration）
   - `EnvironmentSnapshot`（experimentId, deviceModel, manufacturer, androidVersion, batteryOptimization, powerSaveMode, charging, batteryLevel, notificationPermission, healthConnectPermission）
 - [ ] Type converters：`UUID`、`Instant`；`AppDatabase` 啟用 WAL
@@ -350,10 +350,14 @@ adb shell am start-foreground-service \
 
 ### 4.4.1 Coding（34–38 h）
 
-- [ ] Service loop 整合 `HealthConnectManager`
-  - 批次累積 steps 後單次 `StepsRecord` insert（SDS §7）
+- [ ] Service loop 整合 `HealthConnectManager` + `HealthWriteCoordinator`
+  - 每分鐘 lazy 產 steps，緩衝 1 分鐘 window `[startTime+(k-1)min, startTime+k·min)`（`StepRecordWindow`）
+  - 回溯寫入：僅寫已結束分鐘（endTime ≤ now）
+  - 批次：每 `batchMinutes` 將已結束未寫分鐘以單次 `insertRecords(List<StepsRecord>)` 寫出（SDS §7，省 IPC）
+  - 1 分鐘 1 筆，不加總
 - [ ] `HealthWriteEvent` 記錄（FR-004）
-  - 每次寫入 success / failure + errorMessage
+  - 每筆紀錄一筆 event，含 recordStart / recordEnd
+  - 同批共用該次寫入 success / failure + errorMessage
   - Fail-open：失敗不中斷 loop（SDS §1.2）
 - [ ] `NotificationController`（FR-006）
   - 顯示：running status、total steps、remaining time、experiment id
@@ -362,13 +366,17 @@ adb shell am start-foreground-service \
   - `setExactAndAllowWhileIdle` Doze backstop
   - `canScheduleExactAlarms()` false 時 fallback inexact
 - [ ] Stop / completion path（FR-007 / FR-008 service 端）
+  - 手動 Stop（FR-007）：**不 flush** 未完成批次（丟棄緩衝，避免干擾結果）
+  - 自動完成（FR-008）：**flush** 所有已結束未寫分鐘後再聚合
   - `ResultAggregator` → `ExperimentResult` upsert
   - 更新 `Experiment.status` = `STOPPED` / `COMPLETED`
   - `stopForeground` + `stopSelf`
 
 ### 4.4.2 Unit Testing（18–22 h）
 
-- [ ] 批次寫入邏輯：累積 N tick steps → 單次 HC insert
+- [ ] `HealthWriteCoordinator`：累積 `batchMinutes` 分鐘 → 單次 `insertRecords(List)`；每分鐘一筆 event
+- [ ] 回溯 window 計算（`StepRecordWindow`）：連續、不重疊、不含未來區間
+- [ ] Flush 規則：手動 stop 不 flush（緩衝丟棄）、completion flush 全部
 - [ ] `HealthWriteEvent` 計數與 `ResultAggregator` 一致
 - [ ] `NotificationControllerTest`（mock `NotificationManager`）
   - Throttle：1 分鐘內多次呼叫只更新一次
@@ -379,7 +387,8 @@ adb shell am start-foreground-service \
 ### 4.4.3 Simulator Testing（10–14 h）
 
 - [ ] 5–10 min 實驗：notification 內容隨時間正確更新
-- [ ] HC 寫入成功路徑：Health Connect app 可見新增步數
+- [ ] HC 寫入成功路徑：Health Connect app 可見新增步數，且無未來區間紀錄
+- [ ] batchMinutes（1/3/5）：寫入頻率與 HC 可見延遲符合預期
 - [ ] HC 寫入失敗路徑：執行中撤銷 `WRITE_STEPS` → `HealthWriteEvent(success=false)` 仍持續記錄
 - [ ] Doze 初步（Q4）：
 
@@ -417,7 +426,7 @@ adb shell dumpsys deviceidle unforce
 
 - [ ] `MainActivity` + Compose `NavHost`
 - [ ] `ConfigScreen`（FR-001）
-  - Inputs：targetCadence（SPM）、randomRange（±）、durationMinutes
+  - Inputs：targetCadence（SPM）、randomRange（±）、durationMinutes、batchMinutes（寫入批次，1/3/5 選擇器）
   - 輸入驗證（合理範圍）；通過後啟用 Start
 - [ ] `RunningScreen`（FR-002 / FR-006 / FR-007）
   - 觀察 Room `Flow`（heartbeat、write events）— 非 service binding（SDS §3.1）
@@ -433,6 +442,7 @@ adb shell dumpsys deviceidle unforce
 
 - [ ] `ExperimentViewModelTest`
   - 輸入驗證：無效 cadence / duration → Start disabled
+  - batchMinutes 預設值與 1/3/5 選擇
   - Start → state 轉為 Running
   - Stop → state 轉為 Idle / Completed
   - 錯誤處理：HC 不可用時提示

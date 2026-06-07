@@ -12,17 +12,25 @@ class ExperimentFinalizer(
     private val healthWriteCoordinator: HealthWriteCoordinator,
 ) {
 
+    /**
+     * @param flushPending when true (auto-completion, FR-008) flush all elapsed-but-unwritten
+     *   minutes before aggregating; when false (manual stop, FR-007) discard the in-progress
+     *   batch so a partial window does not skew the result.
+     */
     suspend fun finalize(
         experimentId: UUID,
         terminalStatus: ExperimentStatus,
         endTime: Instant,
+        flushPending: Boolean,
     ) {
         val experiment = repository.getExperiment(experimentId) ?: return
         if (experiment.status != ExperimentStatus.RUNNING) {
             return
         }
 
-        healthWriteCoordinator.flushPending(experimentId)
+        if (flushPending) {
+            healthWriteCoordinator.flushPending(experimentId)
+        }
         healthWriteCoordinator.clear(experimentId)
 
         val heartbeats = repository.getHeartbeats(experimentId)

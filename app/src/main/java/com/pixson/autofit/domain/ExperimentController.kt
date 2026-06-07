@@ -28,6 +28,7 @@ class ExperimentController(
             durationMinutes = config.durationMinutes,
             targetCadence = config.targetCadence,
             randomRange = config.randomRange,
+            batchMinutes = config.batchMinutes,
             status = ExperimentStatus.RUNNING,
         )
         repository.insertExperiment(experiment)

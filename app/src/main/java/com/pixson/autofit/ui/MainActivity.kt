@@ -8,12 +8,14 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -106,6 +108,9 @@ class MainActivity : ComponentActivity() {
                 val scrollState = rememberScrollState()
                 var hcStatusText by remember { mutableStateOf("Checking Health Connect...") }
                 var activeExperimentId by remember { mutableStateOf<UUID?>(null) }
+                var selectedBatchMinutes by remember {
+                    mutableStateOf(ExperimentConfig.DEFAULT_BATCH_MINUTES)
+                }
 
                 suspend fun refreshStatus() {
                     hcStatusText = when (val status = app.healthConnectManager.getSdkStatus()) {
@@ -152,6 +157,30 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text("Refresh HC Status")
+                        }
+
+                        Text(
+                            text = "Write batch size (minutes per HC flush)",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            ExperimentConfig.BATCH_MINUTE_OPTIONS.forEach { option ->
+                                val selected = option == selectedBatchMinutes
+                                Button(
+                                    onClick = { selectedBatchMinutes = option },
+                                    modifier = Modifier.weight(1f),
+                                    colors = if (selected) {
+                                        ButtonDefaults.buttonColors()
+                                    } else {
+                                        ButtonDefaults.outlinedButtonColors()
+                                    },
+                                ) {
+                                    Text(option.toString())
+                                }
+                            }
                         }
 
                         Button(
@@ -209,10 +238,11 @@ class MainActivity : ComponentActivity() {
                                             targetCadence = 120,
                                             randomRange = 15,
                                             durationMinutes = 5,
+                                            batchMinutes = selectedBatchMinutes,
                                         ),
                                     )
                                     activeExperimentId = id
-                                    statusMessage = "Experiment created: $id"
+                                    statusMessage = "Experiment created: $id (batch=$selectedBatchMinutes)"
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -228,6 +258,7 @@ class MainActivity : ComponentActivity() {
                                             targetCadence = 120,
                                             randomRange = 15,
                                             durationMinutes = 3,
+                                            batchMinutes = selectedBatchMinutes,
                                         ),
                                     )
                                     activeExperimentId = id

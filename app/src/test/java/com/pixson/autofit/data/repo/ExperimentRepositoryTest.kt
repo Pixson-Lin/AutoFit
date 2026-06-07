@@ -54,6 +54,7 @@ class ExperimentRepositoryTest {
             durationMinutes = 30,
             targetCadence = 100,
             randomRange = 10,
+            batchMinutes = 1,
             status = ExperimentStatus.RUNNING,
         )
         repository.insertExperiment(experiment)

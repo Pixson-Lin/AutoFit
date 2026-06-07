@@ -55,6 +55,7 @@
 - 維持長時間執行
 - 顯示 Notification
 - 週期性產生步數資料
+- 顯示在其他應用程式上層(Display over other apps)
 
 ---
 
@@ -121,7 +122,34 @@
 
 ### Health Write Event
 
-一次 Health Connect 寫入行為。
+一次 Health Connect 寫入嘗試，對應一個已結束的 1 分鐘步數區間。
+留存 stepCount、success、errorMessage、寫入時刻 timestamp，以及該區間的 recordStart / recordEnd。
+
+---
+
+### Retrospective Write（回溯寫入）
+
+StepsRecord 僅在其時間區間「已結束」後才寫入（endTime ≤ 寫入當下），不寫入尚未發生的未來區間。
+
+---
+
+### Batch Write（批次寫入）
+
+延遲並集中 Health Connect 寫入時機的實驗參數（batchMinutes）。
+當 tick 編號 k（k > 0）滿足 k mod batchMinutes = 0 時，於單一 insertRecords 呼叫一次寫入該批多筆 1 分鐘紀錄。
+若實驗結束時仍有未觸發批次的已結束分鐘（例如 batch=5、duration=3），由 FR-008 completion flush 一次寫出。
+批次僅改變「寫入時機與 IPC 次數」，不改變紀錄粒度（仍 1 分鐘 1 筆），不做步數加總。
+
+---
+
+### Tick（實驗時脈）
+
+以 experiment.startTime 為 T0 的離散時脈：
+
+- **tick 0**（T0）：實驗開始，記錄 Heartbeat（generatedSteps = 0），不產生步數、不寫入 HC。
+- **tick k**（T0 + k·min，k ≥ 1）：第 k 個模擬分鐘剛結束，產生該格步數並記錄 Heartbeat。
+- 第 k 格名義區間為 `[startTime+(k−1)min, startTime+k·min)`。
+- durationMinutes 表示步數模擬分鐘數（tick 1…durationMinutes）；實驗內 Heartbeat 共 durationMinutes + 1 筆（含 tick 0）。
 
 ---
 
@@ -204,6 +232,7 @@ Health Connect 寫入是否穩定？
 - Target Cadence
 - Random Range
 - Duration
+- Write Batch Size（batchMinutes，可選 1 / 3 / 5）
 
 ### Outputs
 
@@ -260,21 +289,36 @@ Result:
 118
 ```
 
+### Timing
+
+- tick 0（T0）：不產生步數。
+- tick k（T0 + k·min，k ≥ 1）：於該分鐘**結束後**產生（lazy）第 k 格步數，數值僅由 targetCadence、randomRange 與 seed 決定。
+- 第 k 格名義區間為 `[startTime+(k−1)min, startTime+k·min)`。
+
 ---
 
 ## FR-004 Write Health Connect Data
 
 ### Description
 
-系統應寫入 Health Connect。
+系統以「回溯寫入」方式將步數寫入 Health Connect。
+
+### Rules
+
+- 粒度：1 分鐘 1 筆 StepsRecord，不做加總。
+- 回溯：每筆紀錄的時間區間必須已結束（endTime ≤ 寫入當下），不得寫入未來區間。
+- 區間錨點：以 experiment.startTime 為基準，按分鐘遞增、不重疊。
+- 批次：依 batchMinutes（1/3/5）延遲寫入；當 tick k（k > 0）滿足 k mod batchMinutes = 0 時，以單一 insertRecords 呼叫一次寫入該批多筆 1 分鐘紀錄（降低 IPC 次數）；未整批觸發的尾端分鐘於 FR-008 completion flush。
+- 留存：每筆紀錄寫入一筆 HealthWriteEvent（含 recordStart / recordEnd）；同一批共用該次寫入結果（success / errorMessage）。
+- Fail-open：寫入失敗不中斷實驗，仍記錄 success=false。
 
 ### Data Type
 
-StepsRecord
+StepsRecord（每分鐘一筆）
 
 ### Expected Result
 
-成功寫入步數資料。
+已結束之各分鐘步數成功寫入，且 HC 中無未來區間紀錄。
 
 ---
 
@@ -292,6 +336,12 @@ StepsRecord
 - Battery Level
 - Screen State
 - Charging State
+
+### Timing
+
+- tick 0（T0）：記錄 Heartbeat（generatedSteps = 0），標記實驗開始。
+- tick k（k ≥ 1）：於 T0 + k·min 記錄該格剛產生的 generatedSteps。
+- Heartbeat 不隨 Health Connect 批次/回溯寫入延遲（兩者語意不同，允許相差一個以上 tick）。
 
 ---
 
@@ -319,7 +369,8 @@ StepsRecord
 ### Expected Result
 
 - 停止 Service
-- 儲存結果
+- 不 flush 尚未寫出的分鐘（丟棄未完成批次，避免干擾實驗結果）
+- 聚合並儲存結果（僅計入已成功寫入的分鐘）
 - 更新 UI
 
 ---
@@ -333,8 +384,8 @@ StepsRecord
 ### Expected Result
 
 - 停止產生步數
-- 完成資料寫入
-- 產生實驗報告
+- flush 所有已結束、尚未寫出的分鐘後，完成資料寫入
+- 聚合並產生實驗報告
 
 ---
 
@@ -536,6 +587,7 @@ Observe Result
 | durationMinutes | Int |
 | targetCadence | Int |
 | randomRange | Int |
+| batchMinutes | Int |
 | status | Enum |
 
 ---
@@ -561,6 +613,8 @@ Observe Result
 | id | UUID |
 | experimentId | UUID |
 | timestamp | Instant |
+| recordStart | Instant |
+| recordEnd | Instant |
 | stepCount | Int |
 | success | Boolean |
 | errorMessage | String |

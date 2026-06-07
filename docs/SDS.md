@@ -155,7 +155,7 @@ com.pixson.autofit
 ## 3.1 UI Components
 
 - **`MainActivity`** — single-Activity host. Owns the Compose `NavHost` and requests runtime permissions. Survives configuration changes; never owns experiment state.
-- **`ConfigScreen`** (FR-001) — inputs for `targetCadence` (SPM), `randomRange` (±), `durationMinutes`. Validates ranges before enabling Start.
+- **`ConfigScreen`** (FR-001) — inputs for `targetCadence` (SPM), `randomRange` (±), `durationMinutes`, and `batchMinutes` (write batch, selectable 1/3/5). Validates ranges before enabling Start.
 - **`RunningScreen`** (FR-002/006) — live status: elapsed/remaining, total steps, last heartbeat, write success/failure counters. Bound to a `StateFlow` mirrored from the service via Room.
 - **`HistoryScreen`** (FR-009) — list of past experiments with start/end time, duration, total steps, success rate; drill-down to per-experiment results.
 - **`EnvironmentScreen`** (FR-010/012) — readiness checklist (battery optimization, power-save, charging, notification permission, Health Connect permission) with one-tap fixes via `SettingsNavigator`.
@@ -176,13 +176,14 @@ randomOffset   ∈ [-randomRange, +randomRange]   (uniform, seedable)
   Seedable RNG enables NFR-002 repeatability (a fixed seed reproduces the same sequence). Output is clamped to be non-negative.
 - **`ExperimentController`** — façade used by the UI. Responsibilities: create the `Experiment` row, capture the `EnvironmentSnapshot`, start/stop the foreground service via explicit `Intent`, and expose the active experiment id.
 - **`ResultAggregator`** — given an experiment id, folds heartbeats and write events into an `ExperimentResult` (total steps, heartbeat count, write success/failure counts, actual duration).
+- **`HealthWriteCoordinator`** — buffers per-minute `(steps, window)` entries, computes each minute's `[recordStart, recordEnd)` from `experiment.startTime` (via `StepRecordWindow`), and flushes completed minutes every `batchMinutes` as a single retrospective `insertRecords` call. Manual stop discards the un-flushed buffer; completion flushes it. Emits one `HealthWriteEvent` per minute record, sharing the batch call result.
 
 ## 3.3 Data Components
 
 - **`AppDatabase` (Room, WAL mode)** — entities map 1:1 to SRS §6: `Experiment`, `Heartbeat`, `HealthWriteEvent`, `ExperimentResult`, `EnvironmentSnapshot`. `Instant`/`UUID` handled by type converters. Indices on `experimentId`.
 - **DAOs** — `ExperimentDao`, `HeartbeatDao`, `HealthWriteEventDao`, `ResultDao`, `EnvironmentDao`. Writes are `suspend`; reads return `Flow`. Bulk inserts where applicable.
 - **`ExperimentRepository`** — single source of truth gateway. Coordinates Room + Health Connect + environment. All callers (UI, service, boot receiver) go through it.
-- **`HealthConnectManager`** (FR-004) — thin wrapper over `HealthConnectClient`. Responsibilities: availability check (`getSdkStatus`), permission check, and `insertRecords(StepsRecord)` with start/end timestamps. Returns a sealed result (`Success` / `Failure(reason)`) so the loop can log a `HealthWriteEvent` either way. Steps are **batched per write interval**, not per second.
+- **`HealthConnectManager`** (FR-004) — thin wrapper over `HealthConnectClient`. Responsibilities: availability check (`getSdkStatus`), permission check, and `insertRecords(List<StepsRecord>)`. Returns a sealed result (`Success` / `Failure(reason)`). Granularity is **one StepsRecord per minute** (no summation). Writes are **retrospective** (a record is written only after its minute has elapsed, `endTime ≤ now`) and **batched**: every `batchMinutes`, all completed-but-unwritten minutes are flushed in a **single `insertRecords` call** to minimise IPC (important for old devices and multi-app contention). The shared call result is recorded as one `HealthWriteEvent` per minute record (success/error shared across the batch).
 - **`EnvironmentInspector`** (FR-010) — reads `PowerManager` (battery optimization ignore-list, power-save mode), `BatteryManager` (level, charging), `Build` (model/manufacturer/version), and permission states to produce an `EnvironmentSnapshot`.
 
 ## 3.4 Execution Components
@@ -232,14 +233,17 @@ sequenceDiagram
     R->>DB: insert Experiment(RUNNING), EnvironmentSnapshot
     C->>S: startForegroundService(experimentId)
     S->>S: promote to foreground + notification
-    loop every generation interval (until duration)
+    loop every minute (until duration)
         S->>G: generate(target, range)
-        G-->>S: steps
-        S->>HC: insert StepsRecord(steps)
-        HC-->>S: Success / Failure
-        S->>DB: insert HealthWriteEvent
-        S->>DB: insert Heartbeat (per minute)
-        S->>S: update notification/overlay (per minute)
+        G-->>S: steps_k
+        S->>DB: insert Heartbeat(steps_k)              (immediate)
+        S->>S: buffer minute window [k-1, k)
+        S->>S: update notification (throttled, per minute)
+        alt batchMinutes elapsed (completed minutes pending)
+            S->>HC: insertRecords(List<StepsRecord>)   (retrospective, one IPC)
+            HC-->>S: Success / Failure
+            S->>DB: insert HealthWriteEvent per minute (shared result)
+        end
     end
 ```
 
@@ -255,7 +259,7 @@ sequenceDiagram
     participant DB as Room
 
     Trigger->>S: stop / duration reached
-    S->>S: cancel loop coroutine, flush pending write
+    S->>S: cancel loop coroutine
     S->>RA: aggregate(experimentId)
     RA->>DB: read heartbeats + write events
     RA->>DB: upsert ExperimentResult
@@ -263,7 +267,9 @@ sequenceDiagram
     S->>S: release wakelock, cancel alarm, stopForeground, stopSelf
 ```
 
-- **FR-007 (manual stop)** and **FR-008 (auto-complete)** share this path; only the terminal `status` differs.
+- **FR-007 (manual stop)** and **FR-008 (auto-complete)** share this aggregation path; only the terminal `status` and the flush behaviour differ.
+- **Manual stop (FR-007)**: cancel loop; **do not flush** the pending buffer (the in-progress batch is discarded to avoid skewing results). Aggregate only persisted write events.
+- **Auto-completion (FR-008)**: **flush** all completed-but-unwritten minutes (single `insertRecords`) before aggregation.
 - A `durationMinutes` watchdog inside the loop guarantees completion even if the UI is gone.
 
 ## 4.4 History Read Flow
@@ -351,6 +357,7 @@ Each failure is mapped to the SRS research questions (Q1–Q5) and test cases (A
 ## 6.7 Time Drift / Clock Change
 - **Cause**: NTP correction or manual clock change skews `Instant`-based intervals.
 - **Mitigation**: use `SystemClock.elapsedRealtime()` for interval scheduling (monotonic) while storing wall-clock `Instant` for records — decouples scheduling from wall-clock changes.
+- **Record windows**: each minute's `[recordStart, recordEnd)` is anchored to `experiment.startTime + k·minute` (wall-clock), so retrospective StepsRecord windows are stable, contiguous and non-overlapping regardless of when the batch is actually flushed. The flush time (`HealthWriteEvent.timestamp`) is recorded separately from the record window.
 
 ---
 
@@ -359,7 +366,7 @@ Each failure is mapped to the SRS research questions (Q1–Q5) and test cases (A
 Resource efficiency is a primary constraint, not an afterthought. Concrete tactics:
 
 - **Single generation coroutine** with `delay()` instead of N timers/alarms — minimizes wakeups and thread count.
-- **Batched Health Connect writes** — accumulate steps for an interval and write one `StepsRecord`, instead of one write per second (orders-of-magnitude fewer IPC round-trips and DB writes).
+- **Batched, retrospective Health Connect writes** — keep one `StepsRecord` per minute (no summation), but defer and group `batchMinutes` minutes into a **single `insertRecords` call**. This cuts IPC round-trips by up to `batchMinutes×` (key for old/low-RAM devices running other apps concurrently) while still letting deep-Doze devices sleep between batches. Writes are retrospective (`endTime ≤ now`), so HC never holds future-dated records.
 - **Throttled notification & overlay updates** — refreshed once per minute (per heartbeat), never per tick; avoids notification-rate throttling and redraw cost.
 - **Scoped wakelock** — `PARTIAL_WAKE_LOCK` acquired only for the few milliseconds of each tick, released immediately; never held across `delay()`.
 - **Room WAL + bulk inserts + indices** — reduces fsync pressure and keeps reactive reads cheap.
@@ -373,7 +380,10 @@ Resource efficiency is a primary constraint, not an afterthought. Concrete tacti
 
 - **Foreground Service loop vs WorkManager** — *Chosen: FGS loop.* WorkManager's minimum periodic interval is 15 min and is Doze-throttled, making per-minute cadence (FR-003/005) impossible; it also hides the very background-throttling behavior this lab studies. The FGS loop gives precise, observable control at the cost of being more "visible" to OEM killers — which is itself the phenomenon under study.
 - **Exact vs inexact alarms** — *Chosen: exact (with inexact fallback).* Exact alarms give measurable Doze behavior but require `SCHEDULE_EXACT_ALARM` and consume slightly more power; fallback preserves function when the permission is unavailable.
-- **Per-write vs batched Health Connect writes** — *Chosen: batched.* Far cheaper (CPU/IPC/battery); slightly coarser temporal granularity in the health store. Acceptable because the research signal is survivability, not per-second fidelity.
+- **Per-minute vs batched Health Connect writes** — *Chosen: per-minute records, batched flush.* Record granularity stays at 1 minute (no summation, so per-minute fidelity is preserved), but the **flush** is batched (`batchMinutes` in one `insertRecords`) to cut IPC/wakeups. Cost: a partial trailing batch is lost on manual stop (FR-007, by design) and unwritten minutes are not visible in HC until the next flush. Acceptable because the research signal is survivability, and completion (FR-008) always flushes.
+- **Prospective vs retrospective writes** — *Chosen: retrospective.* Writing a minute only after it elapses (`endTime ≤ now`) avoids future-dated records in HC and better simulates real activity; cost is that the latest minute(s) appear in HC with up to `batchMinutes` delay.
+- **Lazy per-tick vs precomputed step generation** — *Chosen: lazy + seed.* Steps are generated each tick from a seeded RNG (NFR-002 repeatability) rather than precomputed at create time — trivially low CPU per tick, no upfront RAM for the full schedule, and naturally supports early stop.
+- **Batch size (1/3/5) as an experiment parameter** — *Chosen: user-selectable.* Smaller batches = fresher HC data and finer-grained survivability observation; larger batches = fewer wakeups/IPC and better Doze friendliness. Exposing it lets the lab measure the resource/visibility trade-off directly.
 - **Jetpack Compose vs XML Views** — *Chosen: Compose.* Faster development, less boilerplate, good recomposition control. Slightly larger baseline APK/method count vs XML; negligible for this single-screen-set app. (Java/XML remains a valid alternative per the SRS constraint.)
 - **`START_REDELIVER_INTENT` vs `START_STICKY`** — *Chosen: REDELIVER.* Guarantees the original experiment parameters are re-delivered on restart (STICKY delivers a null intent), which matters for resume correctness.
 - **Continuous vs scoped wakelock** — *Chosen: scoped.* A continuous wakelock would maximize survivability but drains battery and risks the OS flagging the app; scoped wakelock balances survivability with the resource-efficiency constraint.

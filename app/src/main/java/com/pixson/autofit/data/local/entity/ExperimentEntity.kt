@@ -13,5 +13,6 @@ data class ExperimentEntity(
     val durationMinutes: Int,
     val targetCadence: Int,
     val randomRange: Int,
+    val batchMinutes: Int,
     val status: ExperimentStatus,
 )

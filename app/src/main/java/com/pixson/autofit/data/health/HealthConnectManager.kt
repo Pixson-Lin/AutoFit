@@ -16,6 +16,12 @@ sealed class WriteResult {
     data class Failure(val reason: String) : WriteResult()
 }
 
+data class StepRecordEntry(
+    val stepCount: Int,
+    val startTime: Instant,
+    val endTime: Instant,
+)
+
 class HealthConnectManager(
     private val gateway: HealthConnectGateway,
 ) {
@@ -66,15 +72,47 @@ class HealthConnectManager(
             return WriteResult.Failure("WRITE_STEPS permission not granted")
         }
 
+        if (!endTime.isAfter(startTime)) {
+            return WriteResult.Failure("endTime must be after startTime")
+        }
+
+        return writeStepsBatch(listOf(StepRecordEntry(stepCount, startTime, endTime)))
+    }
+
+    /**
+     * Retrospective batch write: one StepsRecord per entry (per minute, no summation),
+     * flushed in a single insertRecords call to minimise IPC (FR-004).
+     */
+    suspend fun writeStepsBatch(entries: List<StepRecordEntry>): WriteResult {
+        if (entries.isEmpty()) return WriteResult.Success
+
+        if (entries.any { it.stepCount < 0 }) {
+            return WriteResult.Failure("stepCount must be non-negative")
+        }
+        if (entries.any { !it.endTime.isAfter(it.startTime) }) {
+            return WriteResult.Failure("endTime must be after startTime")
+        }
+
+        when (val status = getSdkStatus()) {
+            is HealthSdkStatus.Available -> Unit
+            is HealthSdkStatus.Unavailable -> return WriteResult.Failure(status.reason)
+        }
+
+        if (!hasWritePermission()) {
+            return WriteResult.Failure("WRITE_STEPS permission not granted")
+        }
+
         return try {
-            val record = StepsRecord(
-                count = stepCount.toLong(),
-                startTime = startTime,
-                endTime = endTime,
-                startZoneOffset = ZoneOffset.UTC,
-                endZoneOffset = ZoneOffset.UTC,
-            )
-            gateway.insertRecords(listOf(record))
+            val records = entries.map { entry ->
+                StepsRecord(
+                    count = entry.stepCount.toLong(),
+                    startTime = entry.startTime,
+                    endTime = entry.endTime,
+                    startZoneOffset = ZoneOffset.UTC,
+                    endZoneOffset = ZoneOffset.UTC,
+                )
+            }
+            gateway.insertRecords(records)
             WriteResult.Success
         } catch (exception: Exception) {
             WriteResult.Failure(exception.message ?: exception.javaClass.simpleName)

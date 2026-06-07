@@ -52,12 +52,11 @@ class ExperimentLoopRunnerTest {
         val healthConnectManager = mockk<HealthConnectManager>()
         coEvery { healthConnectManager.getSdkStatus() } returns HealthSdkStatus.Available
         coEvery { healthConnectManager.hasWritePermission() } returns true
-        coEvery { healthConnectManager.writeSteps(any(), any(), any()) } returns WriteResult.Success
+        coEvery { healthConnectManager.writeStepsBatch(any()) } returns WriteResult.Success
 
         healthWriteCoordinator = HealthWriteCoordinator(
             healthConnectManager = healthConnectManager,
             repository = repository,
-            batchTickCount = 1,
             currentInstant = clock::currentInstant,
         )
     }
@@ -75,10 +74,12 @@ class ExperimentLoopRunnerTest {
         val exitReason = runner.run(experimentId, isStopped = { false })
 
         val heartbeats = repository.getHeartbeats(experimentId)
-        assertTrue(heartbeats.size >= 2)
+        assertEquals(2, heartbeats.size)
+        assertEquals(0, heartbeats.first().generatedSteps)
+        assertTrue(heartbeats.last().generatedSteps > 0)
         assertEquals(LoopExitReason.COMPLETED, exitReason)
         assertEquals(ExperimentStatus.RUNNING, repository.getExperiment(experimentId)?.status)
-        assertTrue(repository.getHealthWriteEvents(experimentId).isNotEmpty())
+        assertEquals(1, repository.getHealthWriteEvents(experimentId).size)
         assertEquals(heartbeats.size, wakeLock.acquireCount)
         assertEquals(heartbeats.size, wakeLock.releaseCount)
     }
@@ -91,7 +92,7 @@ class ExperimentLoopRunnerTest {
                 id = UUID.randomUUID(),
                 experimentId = experimentId,
                 timestamp = Instant.parse("2026-06-06T10:00:00Z"),
-                generatedSteps = 110,
+                generatedSteps = 0,
                 batteryLevel = 70,
                 screenOn = true,
                 charging = false,
@@ -99,13 +100,11 @@ class ExperimentLoopRunnerTest {
         )
 
         val runner = createRunner(tickIntervalMs = 10L)
-        var ticks = 0
+        var completedTicks = 0
         runner.run(
             experimentId = experimentId,
-            isStopped = {
-                ticks++
-                ticks >= 2
-            },
+            isStopped = { completedTicks >= 2 },
+            onTick = { completedTicks++ },
         )
 
         val heartbeats = repository.getHeartbeats(experimentId)
@@ -116,14 +115,12 @@ class ExperimentLoopRunnerTest {
     fun `stop flag ends loop without completion status`() = runBlocking {
         val experimentId = insertRunningExperiment(durationMinutes = 10)
         val runner = createRunner(tickIntervalMs = 10L)
-        var ticks = 0
+        var completedTicks = 0
 
         val exitReason = runner.run(
             experimentId = experimentId,
-            isStopped = {
-                ticks++
-                ticks > 2
-            },
+            isStopped = { completedTicks >= 2 },
+            onTick = { completedTicks++ },
         )
 
         assertEquals(LoopExitReason.STOPPED_EARLY, exitReason)
@@ -153,6 +150,7 @@ class ExperimentLoopRunnerTest {
                 durationMinutes = durationMinutes,
                 targetCadence = 120,
                 randomRange = 15,
+                batchMinutes = 1,
                 status = ExperimentStatus.RUNNING,
             ),
         )

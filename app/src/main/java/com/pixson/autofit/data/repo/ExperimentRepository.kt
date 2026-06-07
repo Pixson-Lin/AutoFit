@@ -61,6 +61,10 @@ class ExperimentRepository(
         healthWriteEventDao.insert(event)
     }
 
+    suspend fun insertHealthWriteEvents(events: List<HealthWriteEventEntity>) {
+        healthWriteEventDao.insertAll(events)
+    }
+
     suspend fun getHealthWriteEvents(experimentId: UUID): List<HealthWriteEventEntity> =
         healthWriteEventDao.getByExperimentId(experimentId)
 

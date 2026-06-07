@@ -211,6 +211,7 @@ class ExperimentForegroundService : Service() {
             experimentId = experimentId,
             terminalStatus = terminalStatus,
             endTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
+            flushPending = terminalStatus == ExperimentStatus.COMPLETED,
         )
         ServiceEventLogger.stopped(experimentId, reason)
         stopForeground(STOP_FOREGROUND_REMOVE)
