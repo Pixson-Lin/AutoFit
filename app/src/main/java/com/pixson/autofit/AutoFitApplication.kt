@@ -9,8 +9,13 @@ import com.pixson.autofit.data.local.AppDatabase
 import com.pixson.autofit.data.repo.ExperimentRepository
 import com.pixson.autofit.domain.ExperimentController
 import com.pixson.autofit.domain.ResultAggregator
+import com.pixson.autofit.service.ExperimentFinalizer
+import com.pixson.autofit.service.HealthWriteCoordinator
+import com.pixson.autofit.system.BootInterruptionHandler
 import com.pixson.autofit.system.PermissionManager
 import com.pixson.autofit.system.SettingsNavigator
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 class AutoFitApplication : Application() {
 
@@ -36,6 +41,9 @@ class AutoFitApplication : Application() {
         private set
 
     lateinit var resultAggregator: ResultAggregator
+        private set
+
+    lateinit var bootInterruptionHandler: BootInterruptionHandler
         private set
 
     override fun onCreate() {
@@ -74,6 +82,21 @@ class AutoFitApplication : Application() {
             repository = experimentRepository,
             environmentInspector = environmentInspector,
             permissionManager = permissionManager,
+        )
+
+        val healthWriteCoordinator = HealthWriteCoordinator(
+            healthConnectManager = healthConnectManager,
+            repository = experimentRepository,
+            currentInstant = { Instant.now().truncatedTo(ChronoUnit.MILLIS) },
+        )
+        val experimentFinalizer = ExperimentFinalizer(
+            repository = experimentRepository,
+            resultAggregator = resultAggregator,
+            healthWriteCoordinator = healthWriteCoordinator,
+        )
+        bootInterruptionHandler = BootInterruptionHandler(
+            repository = experimentRepository,
+            experimentFinalizer = experimentFinalizer,
         )
     }
 }

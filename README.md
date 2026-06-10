@@ -101,11 +101,11 @@ AutoFit 是一套**可重複執行、可量測、可比較**的 Android 實驗�
 | Sprint 4 — HC batch write, notification, alarm | Done |
 | Sprint 5 — Config / Running UI (MVP) | Done |
 | Sprint 6 — History, Environment, auto-complete | Done |
-| Sprint 7+ | Not started |
+| Sprint 7 — Overlay, Boot recovery, QA | Done |
 
-Sprint 6 adds **`HistoryScreen`** / **`HistoryDetailScreen`** with **`HistoryViewModel`** (reactive list + success rate), **`EnvironmentScreen`** with readiness checklist and **`SettingsNavigator`** fixes, bottom navigation (New / History / Environment), and running-session navigation from History (`v0.6.0-sprint6`). FR-008 auto-completion was already implemented in the service layer; Sprint 6 surfaces results in History.
+Sprint 7 adds optional **`OverlayController`** (throttled status chip, graceful degrade without `SYSTEM_ALERT_WINDOW`), **`BootReceiver`** + **`BootInterruptionHandler`** (`INTERRUPTED_BY_REBOOT`), Environment overlay/HC install shortcuts, and **`docs/test_protocol.md`** for Test Cases A–D (`v0.7.0-sprint7`).
 
-Sprint 6 已完成：**Beta** — History 列表與詳情（含 Environment snapshot）、Environment 檢查清單、四頁導覽；實驗自動完成後可在 History 查看結果。
+Sprint 7 已完成：**v1.0 研究平台** — Overlay、重開機中斷標記、相容性檢查清單與測試協議；可進行實機研究（Test Case A–D）。
 
 ---
 

@@ -82,4 +82,6 @@
     <string name="environment_title">Environment readiness</string>
     <string name="environment_refresh">Refresh</string>
     <string name="environment_fix">Fix</string>
+
+    <string name="overlay_status_running">%1$d steps · %2$d min · tick %3$d</string>
 </resources>

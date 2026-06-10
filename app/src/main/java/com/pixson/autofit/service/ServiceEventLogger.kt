@@ -66,4 +66,31 @@ object ServiceEventLogger {
     fun alarmFired(experimentId: String) {
         Log.i(TAG, "Alarm fired experimentId=$experimentId")
     }
+
+    fun overlayUpdated(experimentId: UUID, tickIndex: Int) {
+        Log.d(TAG, "Overlay updated experimentId=$experimentId tick=$tickIndex")
+    }
+
+    fun overlaySkipped(reason: String) {
+        Log.d(TAG, "Overlay skipped reason=$reason")
+    }
+
+    fun overlayDismissed() {
+        Log.d(TAG, "Overlay dismissed")
+    }
+
+    fun rebootInterrupted(
+        experimentId: UUID,
+        lastHeartbeatAt: java.time.Instant?,
+        rebootGapMinutes: Int,
+    ) {
+        Log.w(
+            TAG,
+            "Reboot interrupted experimentId=$experimentId lastHeartbeat=$lastHeartbeatAt gapMin=$rebootGapMinutes",
+        )
+    }
+
+    fun rebootSkipped(experimentId: UUID, reason: String) {
+        Log.d(TAG, "Reboot handler skipped experimentId=$experimentId reason=$reason")
+    }
 }

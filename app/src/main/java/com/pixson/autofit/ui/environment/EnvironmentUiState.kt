@@ -16,6 +16,8 @@ enum class EnvironmentFixAction {
     REQUEST_HEALTH_PERMISSIONS,
     REQUEST_NOTIFICATION,
     REQUEST_ACTIVITY_RECOGNITION,
+    OVERLAY_SETTINGS,
+    HEALTH_CONNECT_INSTALL,
 }
 
 data class EnvironmentUiState(

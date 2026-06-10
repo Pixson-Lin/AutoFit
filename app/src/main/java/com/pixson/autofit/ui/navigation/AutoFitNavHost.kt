@@ -114,6 +114,10 @@ fun AutoFitNavHost(
                 onRequestNotificationPermission()
             EnvironmentFixAction.REQUEST_ACTIVITY_RECOGNITION ->
                 onRequestActivityRecognition()
+            EnvironmentFixAction.OVERLAY_SETTINGS ->
+                settingsNavigator.launch(settingsNavigator.openOverlaySettings())
+            EnvironmentFixAction.HEALTH_CONNECT_INSTALL ->
+                settingsNavigator.launch(settingsNavigator.openHealthConnectInstall())
         }
     }
 

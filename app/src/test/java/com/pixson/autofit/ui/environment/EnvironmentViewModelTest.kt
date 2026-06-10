@@ -38,6 +38,7 @@ class EnvironmentViewModelTest {
         every { permissionManager.notificationPermissionState() } returns PermissionGrantState.NOT_REQUIRED
         coEvery { permissionManager.healthConnectPermissionState() } returns PermissionGrantState.GRANTED
         every { permissionManager.canStartHealthForegroundService() } returns true
+        every { permissionManager.canDrawOverlays() } returns true
 
         viewModel = EnvironmentViewModel(context, permissionManager)
         advanceUntilIdle()
@@ -53,6 +54,7 @@ class EnvironmentViewModelTest {
         every { permissionManager.notificationPermissionState() } returns PermissionGrantState.DENIED
         coEvery { permissionManager.healthConnectPermissionState() } returns PermissionGrantState.DENIED
         every { permissionManager.canStartHealthForegroundService() } returns false
+        every { permissionManager.canDrawOverlays() } returns false
 
         viewModel = EnvironmentViewModel(context, permissionManager)
         advanceUntilIdle()

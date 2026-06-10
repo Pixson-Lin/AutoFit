@@ -47,8 +47,9 @@ class EnvironmentViewModel(
         val batteryOptimizationIgnored = permissionManager.isIgnoringBatteryOptimizations()
         val powerSaveOn = permissionManager.isPowerSaveMode()
         val notificationState = permissionManager.notificationPermissionState()
-        val healthConnectState = permissionManager.healthConnectPermissionState() // suspend
+        val healthConnectState = permissionManager.healthConnectPermissionState()
         val activityRecognitionGranted = permissionManager.canStartHealthForegroundService()
+        val overlayGranted = permissionManager.canDrawOverlays()
 
         val items = listOf(
             EnvironmentChecklistItem(
@@ -98,8 +99,20 @@ class EnvironmentViewModel(
                 fixAction = when (healthConnectState) {
                     PermissionGrantState.GRANTED -> EnvironmentFixAction.HEALTH_CONNECT_SETTINGS
                     PermissionGrantState.DENIED -> EnvironmentFixAction.REQUEST_HEALTH_PERMISSIONS
+                    PermissionGrantState.NOT_APPLICABLE -> EnvironmentFixAction.HEALTH_CONNECT_INSTALL
                     else -> null
                 },
+            ),
+            EnvironmentChecklistItem(
+                id = "overlay",
+                title = "Display over other apps",
+                statusText = if (overlayGranted) {
+                    "Granted (optional overlay chip)"
+                } else {
+                    "Not granted (notification only)"
+                },
+                isOk = true,
+                fixAction = if (overlayGranted) null else EnvironmentFixAction.OVERLAY_SETTINGS,
             ),
             EnvironmentChecklistItem(
                 id = "activity_recognition",

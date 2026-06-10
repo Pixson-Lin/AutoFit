@@ -48,6 +48,20 @@ class SettingsNavigator(
         }
     }
 
+    fun openOverlaySettings(): Intent {
+        return Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+            data = Uri.parse("package:${context.packageName}")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    }
+
+    fun openHealthConnectInstall(): Intent {
+        return Intent(Intent.ACTION_VIEW).apply {
+            data = Uri.parse("market://details?id=com.google.android.apps.healthdata")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    }
+
     fun launch(intent: Intent) {
         context.startActivity(intent)
     }

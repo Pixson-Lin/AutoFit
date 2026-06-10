@@ -29,6 +29,7 @@ class ExperimentForegroundService : Service() {
     private var stopRequested = false
 
     private lateinit var notificationController: NotificationController
+    private lateinit var overlayController: OverlayController
     private lateinit var loopRunner: ExperimentLoopRunner
     private lateinit var alarmScheduler: AlarmScheduler
     private lateinit var experimentFinalizer: ExperimentFinalizer
@@ -44,6 +45,16 @@ class ExperimentForegroundService : Service() {
             elapsedRealtime = elapsedRealtime,
         )
         notificationController.ensureChannel()
+
+        overlayController = OverlayController(
+            context = this,
+            overlayHost = SystemOverlayWindowHost(
+                context = this,
+                windowManager = getSystemService(WINDOW_SERVICE) as android.view.WindowManager,
+                canDrawOverlays = { app.permissionManager.canDrawOverlays() },
+            ),
+            elapsedRealtime = elapsedRealtime,
+        )
 
         val healthWriteCoordinator = HealthWriteCoordinator(
             healthConnectManager = app.healthConnectManager,
@@ -104,6 +115,7 @@ class ExperimentForegroundService : Service() {
         stopRequested = false
         ServiceEventLogger.started(experimentId)
         notificationController.resetThrottle()
+        overlayController.resetThrottle()
 
         val notification = notificationController.buildStartingNotification(experimentId)
         startInForeground(notification)
@@ -121,6 +133,7 @@ class ExperimentForegroundService : Service() {
 
     override fun onDestroy() {
         activeExperimentId?.let { alarmScheduler.cancel(it) }
+        overlayController.dismiss()
         ServiceEventLogger.destroyed(activeExperimentId)
         loopJob?.cancel()
         serviceScope.cancel()
@@ -180,6 +193,14 @@ class ExperimentForegroundService : Service() {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
         notificationManager.notify(ServiceConstants.NOTIFICATION_ID, notification)
         notificationController.markUpdated()
+        overlayController.update(
+            RunningNotificationSnapshot(
+                experimentId = experimentId,
+                totalSteps = snapshot.totalWrittenSteps,
+                remainingMinutes = snapshot.remainingMinutes,
+                tickIndex = snapshot.tickIndex,
+            ),
+        )
     }
 
     private fun stopExperiment(
@@ -213,6 +234,7 @@ class ExperimentForegroundService : Service() {
             endTime = Instant.now().truncatedTo(ChronoUnit.MILLIS),
             flushPending = terminalStatus == ExperimentStatus.COMPLETED,
         )
+        overlayController.dismiss()
         ServiceEventLogger.stopped(experimentId, reason)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -220,6 +242,7 @@ class ExperimentForegroundService : Service() {
 
     private fun stopForegroundOnly(experimentId: UUID?, reason: String) {
         experimentId?.let { alarmScheduler.cancel(it) }
+        overlayController.dismiss()
         ServiceEventLogger.stopped(experimentId, reason)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
