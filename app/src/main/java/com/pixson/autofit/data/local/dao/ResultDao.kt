@@ -17,6 +17,9 @@ interface ResultDao {
     @Query("SELECT * FROM experiment_results WHERE experimentId = :experimentId")
     suspend fun getByExperimentId(experimentId: UUID): ExperimentResultEntity?
 
+    @Query("SELECT * FROM experiment_results WHERE experimentId = :experimentId")
+    fun observeByExperimentId(experimentId: UUID): Flow<ExperimentResultEntity?>
+
     @Query("SELECT * FROM experiment_results ORDER BY experimentId DESC")
     fun observeAll(): Flow<List<ExperimentResultEntity>>
 }

@@ -6,4 +6,80 @@
     <string name="notification_title_running">AutoFit experiment running</string>
     <string name="notification_status_starting">Starting experiment…</string>
     <string name="notification_status_running">%1$d steps · %2$d min left · tick %3$d</string>
+
+    <string name="config_title">New Experiment</string>
+    <string name="config_subtitle">Configure cadence, duration, and Health Connect batch size.</string>
+    <string name="config_cadence_label">Target cadence (SPM)</string>
+    <string name="config_cadence_hint">1–500 steps per minute</string>
+    <string name="config_range_label">Random range (±)</string>
+    <string name="config_range_hint">0–200 steps per minute</string>
+    <string name="config_duration_label">Duration (minutes)</string>
+    <string name="config_duration_hint">1–180 minutes</string>
+    <string name="config_batch_label">Health Connect batch (minutes)</string>
+    <string name="config_refresh_hc">Refresh HC</string>
+    <string name="config_request_hc">Grant HC</string>
+    <string name="config_request_activity">Grant activity recognition</string>
+    <string name="config_start">Start experiment</string>
+
+    <string name="running_title">Experiment running</string>
+    <string name="running_status">Status: %1$s</string>
+    <string name="running_elapsed">Elapsed</string>
+    <string name="running_elapsed_value">%1$d min %2$d sec</string>
+    <string name="running_remaining">Remaining</string>
+    <string name="running_minutes_value">%1$d min</string>
+    <string name="running_tick">Tick index</string>
+    <string name="running_steps_written">Steps written (HC)</string>
+    <string name="running_steps_generated">Steps generated</string>
+    <string name="running_writes">HC writes (ok / fail)</string>
+    <string name="running_writes_value">%1$d / %2$d</string>
+    <string name="running_experiment_id">Experiment ID: %1$s</string>
+    <string name="running_stop">Stop experiment</string>
+    <string name="running_finished_completed">Experiment completed.</string>
+    <string name="running_finished_stopped">Experiment stopped.</string>
+    <string name="running_finished_other">Experiment ended (%1$s).</string>
+    <string name="running_new_experiment">New experiment</string>
+
+    <string name="nav_config">New</string>
+    <string name="nav_history">History</string>
+    <string name="nav_environment">Environment</string>
+
+    <string name="history_title">Experiment history</string>
+    <string name="history_empty">No experiments yet. Start one from the New tab.</string>
+    <string name="history_item_status">%1$s</string>
+    <string name="history_item_start">Start: %1$s</string>
+    <string name="history_item_end">End: %1$s</string>
+    <string name="history_item_duration">Duration: %1$s</string>
+    <string name="history_item_steps_rate">Steps: %1$s · Success: %2$s</string>
+    <string name="history_item_running_hint">Tap to open live running view</string>
+
+    <string name="history_detail_title">Experiment details</string>
+    <string name="history_detail_status">Status</string>
+    <string name="history_detail_start">Start time</string>
+    <string name="history_detail_end">End time</string>
+    <string name="history_detail_configured_duration">Configured duration</string>
+    <string name="history_detail_actual_duration">Actual duration</string>
+    <string name="history_detail_cadence">Target cadence</string>
+    <string name="history_detail_range">Random range</string>
+    <string name="history_detail_batch">HC batch</string>
+    <string name="history_detail_results_header">Results</string>
+    <string name="history_detail_total_steps">Total steps written</string>
+    <string name="history_detail_heartbeats">Heartbeat count</string>
+    <string name="history_detail_writes">HC writes (ok / fail)</string>
+    <string name="history_detail_success_rate">Success rate</string>
+    <string name="history_detail_environment_header">Environment snapshot</string>
+    <string name="history_detail_device">Device</string>
+    <string name="history_detail_manufacturer">Manufacturer</string>
+    <string name="history_detail_android">Android version</string>
+    <string name="history_detail_battery_level">Battery level</string>
+    <string name="history_detail_charging">Charging</string>
+    <string name="history_detail_battery_opt">Battery optimization</string>
+    <string name="history_detail_power_save">Power save mode</string>
+    <string name="history_detail_notification_perm">Notification permission</string>
+    <string name="history_detail_hc_perm">Health Connect permission</string>
+    <string name="history_detail_open_running">Open running view</string>
+    <string name="history_detail_back">Back to history</string>
+
+    <string name="environment_title">Environment readiness</string>
+    <string name="environment_refresh">Refresh</string>
+    <string name="environment_fix">Fix</string>
 </resources>

@@ -99,11 +99,13 @@ AutoFit 是一套**可重複執行、可量測、可比較**的 Android 實驗�
 | Sprint 2 — Health Connect & Environment | Done |
 | Sprint 3 — Foreground Service core loop | Done |
 | Sprint 4 — HC batch write, notification, alarm | Done |
-| Sprint 5+ | Not started |
+| Sprint 5 — Config / Running UI (MVP) | Done |
+| Sprint 6 — History, Environment, auto-complete | Done |
+| Sprint 7+ | Not started |
 
-Sprint 4 adds **retrospective, batched Health Connect writes** (one `StepsRecord` per elapsed minute, flushed `batchMinutes` at a time in a single `insertRecords` call to minimise IPC), **`HealthWriteEvent`** logging with `recordStart`/`recordEnd`, throttled **`NotificationController`**, **`AlarmScheduler`** Doze backstop, and **`ExperimentFinalizer`** (flush on auto-completion, no flush on manual stop) with `ResultAggregator`. Batch size (1/3/5) is a per-experiment parameter.
+Sprint 6 adds **`HistoryScreen`** / **`HistoryDetailScreen`** with **`HistoryViewModel`** (reactive list + success rate), **`EnvironmentScreen`** with readiness checklist and **`SettingsNavigator`** fixes, bottom navigation (New / History / Environment), and running-session navigation from History (`v0.6.0-sprint6`). FR-008 auto-completion was already implemented in the service layer; Sprint 6 surfaces results in History.
 
-Sprint 4 已完成：完整 backend pipeline（產步數 → 回溯批次寫入 HC → 通知更新 → 結果彙總，unit tests passing）。
+Sprint 6 已完成：**Beta** — History 列表與詳情（含 Environment snapshot）、Environment 檢查清單、四頁導覽；實驗自動完成後可在 History 查看結果。
 
 ---
 

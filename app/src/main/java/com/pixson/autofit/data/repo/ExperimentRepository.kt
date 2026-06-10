@@ -78,6 +78,9 @@ class ExperimentRepository(
     suspend fun getResult(experimentId: UUID): ExperimentResultEntity? =
         resultDao.getByExperimentId(experimentId)
 
+    fun observeResult(experimentId: UUID): Flow<ExperimentResultEntity?> =
+        resultDao.observeByExperimentId(experimentId)
+
     fun observeAllResults(): Flow<List<ExperimentResultEntity>> = resultDao.observeAll()
 
     suspend fun insertEnvironmentSnapshot(snapshot: EnvironmentSnapshotEntity) {

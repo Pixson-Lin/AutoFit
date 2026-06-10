@@ -42,6 +42,12 @@ class SettingsNavigator(
         }.getOrNull()?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
 
+    fun openBatterySaverSettings(): Intent {
+        return Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    }
+
     fun launch(intent: Intent) {
         context.startActivity(intent)
     }
